@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="platformio.ini" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="readme.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="pid">
+      <UniqueIdentifier>{1d134929-8141-4a6d-8b93-29ff3fab7e01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="QEI">
+      <UniqueIdentifier>{8b8f4716-dc08-4b19-b592-8668ad10bb32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MotorCtrl">
+      <UniqueIdentifier>{456a4d59-313e-4b72-b042-c918a24de1b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="MotorDriver">
+      <UniqueIdentifier>{5f83e29b-3238-4929-b2c0-7057278b9c2a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="BufferedSerial">
+      <UniqueIdentifier>{7fb354e0-153c-4bfc-adeb-934979837453}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
