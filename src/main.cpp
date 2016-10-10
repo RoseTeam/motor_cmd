@@ -38,10 +38,8 @@ int main()
 
 		}
 
-		serialParser.setMsg(MsgType::Lspeed);
-		serialParser.comPC.printf(serialParser.outgoingMsg_);
-
-		serialParser.setMsg(MsgType::Rspeed);
-		serialParser.comPC.printf(serialParser.outgoingMsg_);
+		serialParser.sendMsg(MsgType::Lspeed);
+		
+		serialParser.sendMsg(MsgType::Rspeed);		
 	}
 }

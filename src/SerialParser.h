@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <utility> //std::pair
 
 typedef unsigned char uchar;
 
@@ -21,6 +22,7 @@ enum class MsgType : uchar
 	Rspeed,
 	Ttwist,
 	Vtwist,
+	twist,
 	SStatus,
 	ENDMARKER
 };
@@ -38,8 +40,6 @@ struct TypeTrait<MsgType::Xorder>
 };
 
 
-
-
 struct Message
 {
 	MsgType type;
@@ -55,35 +55,44 @@ public:
 	
 	SerialParser(SerialHelper& helper) : serial_helper_(helper) {}
 
-	static const uchar header_{ 0xff };
-	static const uchar escaper_{ '\\' };
-	static const uchar delimiter_{ '\n' };
+	static const char header_{ '\xff' };
+	static const char escaper_{ '\\' };
+	static const char delimiter_{ '\n' };
 
 	static constexpr int max_msg_size_ = 6;
+	
+	void getDataRef(MsgType msgType, char* & obj, int& size);
 
-	inline MsgData const& getDataRef(MsgType msgType) const { return data_[static_cast<uchar>(msgType)]; }
-	inline MsgData & getDataRef(MsgType msgType) { return data_[static_cast<uchar>(msgType)]; }
-	inline float const& getData(MsgType msgType) const { return data_[static_cast<uchar>(msgType)].f; }
+	//inline float const& getData(MsgType msgType) const { return data_[static_cast<uchar>(msgType)].f; }
 
-	inline void setData(MsgType msgType, float const& val) { data_[static_cast<uchar>(msgType)].f = val; }
+	//inline void setData(MsgType msgType, float const& val) { data_[static_cast<uchar>(msgType)].f = val; }
 
-	bool parseMsg(uchar const* msg);
+	bool parseMsg(char const* msg);
 
-	void setMsg(MsgType msgType);
-	inline void setPrepMsg(MsgType msgType, float const& val) { setData(msgType, val); setMsg(msgType); }
+	void sendMsg(MsgType msgType);
+	
 
-	inline uchar const* getMsg() const { return outgoingMsg_; }
-	//inline char const* getMsg() const { return toto; }
+	//MsgData data_[static_cast<uchar>(MsgType::ENDMARKER)];
 
+	float Xorder;
+	float Yorder;
+	float Aorder;
+	float Lspeed;
+	float Rspeed;
+	float Ttwist;
+	float Vtwist;
+	int SStatus;
 
-	uchar outgoingMsg_[max_msg_size_]{ '\0' };
-
-private:
-	MsgData data_[static_cast<uchar>(MsgType::ENDMARKER)];
+	std::pair<float, float> twist;
 };
 
+/**
+ * @return true to signal existing buffer content have been processed 
+ *		(or are unusable (corrupted, bad checksum)) and can be flushed
+ *		false if message content is still incomplete and it should wait for more data.
+ */
 template<typename H>
-bool SerialParser<H>::parseMsg(uchar const* msg)
+bool SerialParser<H>::parseMsg(char const* msg)
 {
 	if (msg[0] >= static_cast<uchar>(MsgType::ENDMARKER))
 	{
@@ -91,21 +100,50 @@ bool SerialParser<H>::parseMsg(uchar const* msg)
 	}
 
 	MsgType msgType = static_cast<MsgType>(msg[0]);
-	//TODO 
-
-	auto& data = getDataRef(msgType);
-	std::memcpy(data.c, msg + 1, sizeof(data));
+	
+	char* dataPtr;
+	int dataLen;
+	getDataRef(msgType, dataPtr, dataLen);
+	std::memcpy(dataPtr, msg + 1, dataLen);
 	return true;
 }
 
 template<typename H>
-void SerialParser<H>::setMsg(MsgType msgType)
+void SerialParser<H>::sendMsg(MsgType msgType)
 {
-	outgoingMsg_[0] = static_cast<uchar>(msgType);
+	char* dataPtr;
+	int dataLen;
+	getDataRef(msgType, dataPtr, dataLen);
 
-	MsgData const& data = getDataRef(msgType);
-	std::memcpy(outgoingMsg_ + 1, data.c, 4);
-	//outgoingMsg_[1] = 'a';
-	//outgoingMsg_[2] = 'b';
-	outgoingMsg_[5] = 0;
+	serial_helper_.putc(static_cast<int>(msgType));
+
+	for (int i = 0; i < dataLen; i++)
+	{
+		serial_helper_.putc(dataPtr[i]);
+		if (dataPtr[i] == delimiter_)
+		{
+			serial_helper_.putc(delimiter_);
+		}
+	}
+	serial_helper_.putc(delimiter_);
+}
+
+template<typename H>
+void SerialParser<H>::getDataRef(MsgType msgType, char* & obj, int& size)
+{
+	switch (msgType)
+	{
+	case MsgType::Aorder:
+		obj = reinterpret_cast<char*>(&Aorder);
+		size = sizeof(Aorder);
+		break;
+	case MsgType::twist:
+		obj = reinterpret_cast<char*>(&twist);
+		size = sizeof(twist);
+		break;
+
+	default:
+		obj = nullptr;
+		size = 0;
+	}
 }
