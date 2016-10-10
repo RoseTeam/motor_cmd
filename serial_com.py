@@ -31,7 +31,7 @@ class SerialData(object):
         self.num_symbols = 0
         self.measured_bauds = 0
 
-        ports = [4, 3]
+        ports = [3, 4]
 
         for com_num in ports:
             try:
@@ -51,13 +51,19 @@ class SerialData(object):
                 break
             except serial.serialutil.SerialException:
                 #no serial connection
+                import traceback
+                traceback.print_exc()
                 self.ser = None
         else:
             print("failed connecting to any com ports in {}".format(ports))
 
+        self.parser = SerialParser()
+
+
         self.thread = Thread(target=self.receiving if self.ser is not None else self.receiving_test,
                              args=())
         self.thread.start()
+
 
     def incr_bauds(self, line):
 
@@ -97,17 +103,11 @@ class SerialData(object):
         endline = ord('\n')
         while True:
 
-            buffer.extend(self.ser.read(self.ser.inWaiting()))
-
-            for idx, char in enumerate(buffer):
-                if char == endline and idx >= 4:
-
-                    line = buffer[:idx]
-                    self.received_lines.append(line)
-                    del buffer[:idx+1]
-
-                    self.incr_bauds(line)
-                    break
+            bytes = self.ser.read(self.ser.inWaiting());
+            self.parser.setMsg(bytes)
+            if self.parser.parseMsg():
+                print(self.parser.odom.a)
+                print(self.parser.Aorder)
 
     def __iter__(self):
         return self

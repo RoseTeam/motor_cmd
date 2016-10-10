@@ -20,13 +20,15 @@ int main()
 
 	ser.Aorder = 0;
 	printf("%f\n", ser.Aorder);
-	
+
+	ser.parseMsg();
 	ser.sendMsg(MsgType::Aorder);
 	
 	ser.Aorder = 2.2f;
 	printf("%f\n", ser.Aorder);
 
-	ser.parseMsg(&serial_helper.rxMsg_[0]);
+	ser.setMsg(&ser.serial_helper_.rxMsg_[0], ser.serial_helper_.rxMsg_.size());
+	ser.parseMsg();
 
 	
 	printf("%f\n", ser.Aorder);	
