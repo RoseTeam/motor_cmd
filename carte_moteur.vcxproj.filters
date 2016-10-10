@@ -23,4 +23,7 @@
       <UniqueIdentifier>{7fb354e0-153c-4bfc-adeb-934979837453}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+  </ItemGroup>
 </Project>
