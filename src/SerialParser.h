@@ -2,7 +2,6 @@
 
 #include <cstdio>
 #include <cstring>
-#include <utility> //std::pair
 
 typedef unsigned char uchar;
 
@@ -27,6 +26,12 @@ enum class MsgType : uchar
 	ENDMARKER
 };
 
+struct TwistMsg
+{
+	float a{ 0 };
+	float b{ 0 };
+};
+
 template<MsgType msgType>
 struct TypeTrait
 {
@@ -49,10 +54,11 @@ struct Message
 template<typename SerialHelper>
 class SerialParser
 {
-	SerialHelper& serial_helper_;
 
 public:
-	
+
+	SerialHelper& serial_helper_;
+
 	SerialParser(SerialHelper& helper) : serial_helper_(helper) {}
 
 	static const char header_{ '\xff' };
@@ -83,7 +89,7 @@ public:
 	float Vtwist;
 	int SStatus;
 
-	std::pair<float, float> twist;
+	TwistMsg twist;
 };
 
 /**
