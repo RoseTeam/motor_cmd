@@ -24,7 +24,7 @@ struct ModSerialParser : public SerialParser<MODSERIAL>
 	}
 
 };
-
+DigitalOut led(LED2);
 
 int main()
 {
@@ -32,7 +32,11 @@ int main()
 	
 	for(int i = 0; ; i++)
 	{
-		wait_ms(300);
+		led = i % 2;
+	
+		wait_ms(500);
+
+		//serialParser.comPC.printf("coucou %d\n", i);
 
 		serialParser.odom.a = i;
 		serialParser.sendMsg(MsgType::Odom);

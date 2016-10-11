@@ -68,6 +68,7 @@ public:
 	}
 
 	MsgType parseMsg();
+	void cleanUpBuffer(int index);
 
 	void sendMsg(MsgType msgType);
 	
@@ -100,6 +101,7 @@ MsgType SerialParser<H>::parseMsg()
 	if (buf_size < 4)
 		return MsgType::None;
 
+	
 	if (rx_buffer_[0] != header_ || rx_buffer_[1] >= static_cast<uchar>(MsgType::None))
 	{
 		//return true; // first byte doesn't match a message type, ignore data
@@ -107,6 +109,7 @@ MsgType SerialParser<H>::parseMsg()
 		return MsgType::None;
 	}
 
+	
 	MsgType msgType = static_cast<MsgType>(rx_buffer_[1]);
 
 	if (msgType == MsgType::Text)
@@ -130,9 +133,30 @@ MsgType SerialParser<H>::parseMsg()
 	}
 	
 	std::memcpy(dataPtr, &rx_buffer_[2], dataLen);
-
-	rx_buffer_.clear();
+	
+	cleanUpBuffer(dataLen+3);
 	return msgType;
+}
+
+template<typename H>
+void SerialParser<H>::cleanUpBuffer(int index)
+{
+	const int bufsize = rx_buffer_.size();
+	int i = index;
+	for (; i < bufsize; i++)
+	{
+		if (rx_buffer_[i] == header_)
+		{
+			break;
+		}
+	}
+
+	for(int u = i; u<bufsize; u++)
+	{
+		rx_buffer_[u - i] = rx_buffer_[u];
+	}
+
+	rx_buffer_.resize(bufsize-i);
 }
 
 template<typename H>

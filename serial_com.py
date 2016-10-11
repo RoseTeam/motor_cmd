@@ -104,8 +104,9 @@ class SerialData(object):
         while True:
 
             bytes = self.ser.read(self.ser.inWaiting());
-            self.parser.setMsg(bytes)
-            if self.parser.parseMsg():
+            if bytes:
+                self.parser.setMsg(bytes)
+                print(self.parser.parseMsg())
                 print(self.parser.odom.a)
                 print(self.parser.Aorder)
 

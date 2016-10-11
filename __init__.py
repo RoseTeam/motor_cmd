@@ -12,7 +12,7 @@ def quickTest():
     print(ser.Aorder)
     ser.Aorder = 2**32-1.
     ser.odom.a = 4
-    ser.sendMsg(MsgType.Odom)
+    #ser.sendMsg(MsgType.Odom)
     ser.sendMsg(MsgType.Aorder)
     print(ser.getMsg())
     ser.Aorder = 77.
