@@ -77,7 +77,7 @@ public:
 public:
 	float Xorder;
 	float Yorder;
-	float Aorder{8.8f};
+	float Aorder{4.8f};
 	float Lspeed;
 	float Rspeed;
 	float Ttwist;

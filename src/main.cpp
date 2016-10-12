@@ -2,6 +2,10 @@
 #include <MODSERIAL.h>
 #include "SerialParser.h"
 
+
+DigitalOut led2(LED2);
+DigitalOut led3(LED3);
+
 struct ModSerialParser : public SerialParser<MODSERIAL>
 {
 	MODSERIAL comPC{ SERIAL_TX, SERIAL_RX };
@@ -20,28 +24,30 @@ struct ModSerialParser : public SerialParser<MODSERIAL>
 		auto buf_count = comPC.rxBufferGetCount();
 		rx_buffer_.resize(buf_size + buf_count);
 		comPC.move(&rx_buffer_[buf_size], buf_count);
-		parseMsg();
+		if (MsgType::None != parseMsg())
+			led3 = !led3;
+		
+		Lspeed = buf_size;
+		Rspeed = buf_count;
+		sendMsg(MsgType::Lspeed);
+		sendMsg(MsgType::Rspeed);
+		led2 = !led2;
 	}
 
 };
-DigitalOut led(LED2);
 
 int main()
 {
 	ModSerialParser serialParser;
 	
 	for(int i = 0; ; i++)
-	{
-		led = i % 2;
-	
-		wait_ms(500);
+	{	
+		wait_ms(1000);
 
 		//serialParser.comPC.printf("coucou %d\n", i);
 
 		serialParser.odom.a = i;
 		serialParser.sendMsg(MsgType::Odom);
-
-		serialParser.Aorder = -i;
 
 		serialParser.sendMsg(MsgType::Aorder);
 	}

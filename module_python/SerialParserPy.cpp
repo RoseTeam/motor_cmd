@@ -60,12 +60,15 @@ PYBIND11_PLUGIN(mot_cmd_py)
 		.def_readwrite("twist", &SerialParserPy::twist)
 		.def_readwrite("odom", &SerialParserPy::odom)
 
-		.def("getMsg", [](SerialParserPy const& ser) {
-				return (bytes)std::string(&ser.helper_.outgoing_msg_[0], ser.helper_.outgoing_msg_.size());
+		.def("getMsg", [](SerialParserPy& ser, MsgType msgType) {
+				ser.sendMsg(msgType);
+				auto ret = (bytes)std::string(&ser.helper_.outgoing_msg_[0], ser.helper_.outgoing_msg_.size());
+				ser.helper_.outgoing_msg_.clear();
+				return ret;
 		})
 		.def("sendMsg", &SerialParserPy::sendMsg)
 		.def("parseMsg", &SerialParserPy::parseMsg)
-			.def("setMsg", [](SerialParserPy & ser, bytes const& data) {
+		.def("setMsg", [](SerialParserPy & ser, bytes const& data) {
 			std::string strdata = data;
 			ser.setMsg(strdata.c_str(), strdata.size()); })
 		;

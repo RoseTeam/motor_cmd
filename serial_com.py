@@ -10,7 +10,7 @@ import collections
 import struct
 import time
 
-from mot_cmd_py import SerialParser
+from mot_cmd_py import SerialParser, MsgType
 
 MAX_SHORT = (1 << 16) - 1
 
@@ -106,9 +106,14 @@ class SerialData(object):
             bytes = self.ser.read(self.ser.inWaiting());
             if bytes:
                 self.parser.setMsg(bytes)
-                print(self.parser.parseMsg())
-                print(self.parser.odom.a)
-                print(self.parser.Aorder)
+                msgType = self.parser.parseMsg()
+                if msgType == MsgType.Odom:
+                    #print(self.parser.odom.a)
+                    self.parser.Aorder = self.parser.odom.a
+                    msg_out = self.parser.getMsg(MsgType.Aorder)
+                    self.ser.write(msg_out)
+                    print(msg_out)
+                print('recvd', msgType, bytes)
 
     def __iter__(self):
         return self
