@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 
 #include "../src/SerialParser.h"
-
+#include <sstream>
 
 struct SerialParserHelperPy
 {
@@ -20,6 +20,9 @@ struct SerialParserPy : public SerialParser<SerialParserHelperPy> {
 
 using namespace pybind11;
 
+#define DEF_READWRITE_FIELD(classname, name)\
+	.def_readwrite(#name, &classname::name)
+
 PYBIND11_PLUGIN(mot_cmd_py)
 {
 	module m("mot_cmd_py", "some docstring");
@@ -33,7 +36,7 @@ PYBIND11_PLUGIN(mot_cmd_py)
 		.value("Rspeed", MsgType::Rspeed)
 		.value("Twist", MsgType::Twist)
 		.value("Odom", MsgType::Odom)
-		.value("None", MsgType::None)
+		.value("NONE", MsgType::None)
 		;
 
 	class_<TwistMsg>(m, "TwistMsg")
@@ -44,8 +47,14 @@ PYBIND11_PLUGIN(mot_cmd_py)
 
 	class_<OdomMsg>(m, "OdomMsg")
 		.def(init<>())
-		.def_readwrite("a", &OdomMsg::a)
-		.def_readwrite("b", &OdomMsg::b)
+		DEF_READWRITE_FIELD(OdomMsg, a)
+		DEF_READWRITE_FIELD(OdomMsg, b)
+		.def("__str__",
+			[](const OdomMsg &obj) {
+				std::ostringstream str;
+				str << "OdomMsg: " << obj.a << ", " << obj.b;
+				return str.str();
+		})
 		;
 
 
@@ -56,23 +65,37 @@ PYBIND11_PLUGIN(mot_cmd_py)
 
 		.def_readonly_static("delimiter_end_", &SerialParserPy::delimiter_end_)
 
-		.def_readwrite("Aorder", &SerialParserPy::Aorder)
-		.def_readwrite("twist", &SerialParserPy::twist)
-		.def_readwrite("odom", &SerialParserPy::odom)
+		DEF_READWRITE_FIELD(SerialParserPy, Aorder)
+		DEF_READWRITE_FIELD(SerialParserPy, Twist)
+		DEF_READWRITE_FIELD(SerialParserPy, Odom)
+		DEF_READWRITE_FIELD(SerialParserPy, Lspeed)
+		DEF_READWRITE_FIELD(SerialParserPy, Rspeed)
 
-		.def("getMsg", [](SerialParserPy& ser, MsgType msgType) {
+		.def_property("rxBuffer", 
+			[](SerialParserPy& ser) { return (bytes)std::string(&ser.rx_buffer_[0], ser.rx_buffer_.size());},
+			[](SerialParserPy & ser, bytes const& data) {
+					std::string strdata = data;
+					ser.rx_buffer_.assign(strdata.begin(), strdata.end());
+			})
+
+
+		.def("sendMsg", &SerialParserPy::sendMsg)
+		.def("parseMsg", &SerialParserPy::parseMsg)
+		.def("setMsg", 
+			[](SerialParserPy & ser, bytes const& data) {
+				std::string strdata = data;
+				ser.setMsg(strdata.c_str(), strdata.size()); 
+				return strdata.size(); 
+			})
+		.def("getMsg", 
+			[](SerialParserPy& ser, MsgType msgType) {
 				ser.sendMsg(msgType);
 				auto ret = (bytes)std::string(&ser.helper_.outgoing_msg_[0], ser.helper_.outgoing_msg_.size());
 				ser.helper_.outgoing_msg_.clear();
 				return ret;
-		})
-		.def("sendMsg", &SerialParserPy::sendMsg)
-		.def("parseMsg", &SerialParserPy::parseMsg)
-		.def("setMsg", [](SerialParserPy & ser, bytes const& data) {
-			std::string strdata = data;
-			ser.setMsg(strdata.c_str(), strdata.size()); })
+			})
 		;
-
+		
 	return m.ptr();
 }
 

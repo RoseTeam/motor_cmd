@@ -24,6 +24,7 @@ struct ModSerialParser : public SerialParser<MODSERIAL>
 		auto buf_count = comPC.rxBufferGetCount();
 		rx_buffer_.resize(buf_size + buf_count);
 		comPC.move(&rx_buffer_[buf_size], buf_count);
+
 		if (MsgType::None != parseMsg())
 			led3 = !led3;
 		
@@ -46,7 +47,8 @@ int main()
 
 		//serialParser.comPC.printf("coucou %d\n", i);
 
-		serialParser.odom.a = i;
+		serialParser.Odom.a = i;
+		serialParser.Aorder = 2*i;
 		serialParser.sendMsg(MsgType::Odom);
 
 		serialParser.sendMsg(MsgType::Aorder);

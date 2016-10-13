@@ -99,22 +99,27 @@ class SerialData(object):
 
     def receiving(self):
 
-        buffer = bytearray()
-        endline = ord('\n')
         while True:
 
-            bytes = self.ser.read(self.ser.inWaiting());
+            bytes = self.ser.read(self.ser.inWaiting())
             if bytes:
-                self.parser.setMsg(bytes)
-                msgType = self.parser.parseMsg()
-                if msgType == MsgType.Odom:
-                    #print(self.parser.odom.a)
-                    self.parser.Aorder = self.parser.odom.a
-                    msg_out = self.parser.getMsg(MsgType.Aorder)
-                    self.ser.write(msg_out)
-                    print(msg_out)
-                print('recvd', msgType, bytes)
+                print('setmsg', self.parser.setMsg(bytes), self.parser.rxBuffer)
+                #print('preparse', bytes)
+                while True:
+                    msgType = self.parser.parseMsg()
+                    #print('postparse')
+                    if msgType == MsgType.Odom:
+                        #print(self.parser.odom.a)
+                        self.parser.Aorder = self.parser.Odom.a
+                        msg_out = self.parser.getMsg(MsgType.Aorder)
+                        self.ser.write(msg_out)
+                        #print("msg_out", msg_out)
 
+                    if msgType == MsgType.NONE:
+                        break
+
+                    print('recvd', msgType, '' if msgType == MsgType.NONE else getattr(self.parser, str(msgType).split('.')[-1]) )
+                    print()
     def __iter__(self):
         return self
 

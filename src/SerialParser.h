@@ -63,8 +63,7 @@ public:
 	void getDataRef(MsgType msgType, char* & obj, int& size);
 
 	void setMsg(char const* msg, int size) { 
-		for(int i = 0; i<size; i++)
-			rx_buffer_.push_back(msg[i]);
+		rx_buffer_.assign(msg, msg + size);
 	}
 
 	MsgType parseMsg();
@@ -84,9 +83,9 @@ public:
 	float Vtwist;
 	int SStatus;
 
-	OdomMsg odom;
+	OdomMsg Odom;
 
-	TwistMsg twist;
+	TwistMsg Twist;
 };
 
 /**
@@ -97,45 +96,51 @@ public:
 template<typename H>
 MsgType SerialParser<H>::parseMsg()
 {
-	auto buf_size = rx_buffer_.size();
-	if (buf_size < 4)
-		return MsgType::None;
+	int buf_size = rx_buffer_.size();
 
-	
-	if (rx_buffer_[0] != header_ || rx_buffer_[1] >= static_cast<uchar>(MsgType::None))
+	for (int first_idx = 0; first_idx < buf_size - 3; first_idx++, buf_size = rx_buffer_.size())
 	{
-		//return true; // first byte doesn't match a message type, ignore data
-		rx_buffer_.clear();
-		return MsgType::None;
+		if (rx_buffer_[first_idx] != header_ ||
+			rx_buffer_[first_idx+1] >= static_cast<uchar>(MsgType::None))
+		{
+			//return true; // first byte doesn't match a message type, ignore data
+			continue;
+		}
+
+		MsgType msgType = static_cast<MsgType>(rx_buffer_[first_idx+1]);
+
+		if (msgType == MsgType::Text)
+		{
+			printf(&rx_buffer_[first_idx+2]);
+			rx_buffer_.clear();
+			return MsgType::Text;
+		}
+
+		char* dataPtr;
+		int dataLen;
+		getDataRef(msgType, dataPtr, dataLen);
+
+		if (buf_size < first_idx + dataLen + 2)
+		{
+			if(first_idx)
+				cleanUpBuffer(first_idx);
+
+			return MsgType::None;
+		}
+
+		if (dataPtr == nullptr)
+			//|| rx_buffer_[first_idx + dataLen + 2] != delimiter_end_)
+		{
+			continue;
+		}
+
+		std::memcpy(dataPtr, &rx_buffer_[first_idx + 2], dataLen);
+
+		cleanUpBuffer(first_idx + dataLen + 2);
+		return msgType;
 	}
 
-	
-	MsgType msgType = static_cast<MsgType>(rx_buffer_[1]);
-
-	if (msgType == MsgType::Text)
-	{
-		printf(&rx_buffer_[2]);
-		rx_buffer_.clear();
-		return MsgType::Text;
-	}
-
-	char* dataPtr;
-	int dataLen;
-	getDataRef(msgType, dataPtr, dataLen);
-
-	if ((int)buf_size < dataLen + 2)
-		return MsgType::None;
-
-	if (dataPtr == nullptr || rx_buffer_[dataLen + 2] != delimiter_end_)
-	{
-		rx_buffer_.clear();
-		return MsgType::None;
-	}
-	
-	std::memcpy(dataPtr, &rx_buffer_[2], dataLen);
-	
-	cleanUpBuffer(dataLen+3);
-	return msgType;
+	return MsgType::None;
 }
 
 template<typename H>
@@ -178,23 +183,23 @@ void SerialParser<H>::sendMsg(MsgType msgType)
 	serial_helper_.putc(delimiter_end_);
 }
 
+
+#define CASE_SET_DATA_REF(msgType)\
+	case MsgType::msgType:\
+	obj = reinterpret_cast<char*>(&msgType);\
+	size = sizeof(msgType);\
+	break
+
 template<typename H>
 void SerialParser<H>::getDataRef(MsgType msgType, char* & obj, int& size)
 {
 	switch (msgType)
 	{
-	case MsgType::Aorder:
-		obj = reinterpret_cast<char*>(&Aorder);
-		size = sizeof(Aorder);
-		break;
-	case MsgType::Twist:
-		obj = reinterpret_cast<char*>(&twist);
-		size = sizeof(twist);
-		break;
-	case MsgType::Odom:
-		obj = reinterpret_cast<char*>(&odom);
-		size = sizeof(odom);
-		break;
+	CASE_SET_DATA_REF(Aorder);
+	CASE_SET_DATA_REF(Twist);
+	CASE_SET_DATA_REF(Odom);
+	CASE_SET_DATA_REF(Lspeed);
+	CASE_SET_DATA_REF(Rspeed);
 
 	default:
 		obj = nullptr;
