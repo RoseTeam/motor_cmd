@@ -78,5 +78,5 @@ struct MotorCmdData
 	int msgCorrupted{ 0 };
 	int bytesReceived{ 0 };
 
-	void getDataRef(MsgType msgType, char* & obj, int& size);
+	void getDataRef(MsgType msgType, char* & obj, int& size) volatile;
 };

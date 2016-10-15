@@ -109,7 +109,7 @@ int main2()
 	ser.parseMsg();
 	ser.parseMsg();
 
-	MotorCmdData& cmdData = ser.motorCmdData;
+	auto& cmdData = ser.motorCmdData;
 
 	const int N = 10;
 

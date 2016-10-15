@@ -5,11 +5,18 @@
 #include <vector>
 #include "motor_cmd_data.h"
 
+#if defined (NO_VOLATILE)
+#define VOLATILE
+#else
+#define VOLATILE volatile
+#endif
+
 template<typename SerialHelper>
 struct SerialParser
 {
 	// struct holding data to be sync'ed accross serial connexion.
-	MotorCmdData motorCmdData;
+	VOLATILE MotorCmdData motorCmdData;
+	std::vector<char> rx_buffer_;
 
 	SerialHelper& serial_helper_;
 
@@ -17,7 +24,7 @@ struct SerialParser
 
 	static const uchar ECHO_MODE{ 2 }; // echo mode for testing : resend everything you receive
 
-	static const char header_{ '\'' };
+	static const char header_{ '/' };
 	static const char delimiter_end_{ '\n' };
 	
 	void recvData(char const* msg, int size) { 
@@ -28,8 +35,6 @@ struct SerialParser
 
 	/* returns true on success */
 	bool sendMsg(MsgType msgType);
-
-	std::vector<char> rx_buffer_;
 
 private:
 	void cleanUpBuffer(int index);
@@ -45,7 +50,7 @@ MsgType SerialParser<H>::parseMsg()
 {
 	int buf_size = rx_buffer_.size();
 
-	for (int first_idx = 0; first_idx < buf_size - 3; first_idx++, buf_size = rx_buffer_.size())
+	for (int first_idx = 0; first_idx <= buf_size - 3; first_idx++, buf_size = rx_buffer_.size())
 	{
 		if (rx_buffer_[first_idx] != header_ ||
 			rx_buffer_[first_idx+1] >= static_cast<uchar>(MsgType::NONE))
@@ -135,7 +140,7 @@ bool SerialParser<H>::sendMsg(MsgType msgType)
 	
 	for (int i = 0; i < dataLen; i++)
 	{
-		serial_helper_.putc(dataPtr[i]);
+		serial_helper_.putc((uchar)dataPtr[i]);
 	}
 
 	serial_helper_.putc(delimiter_end_);

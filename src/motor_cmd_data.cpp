@@ -2,11 +2,11 @@
 
 #define CASE_SET_DATA_REF(msgType)\
 	case MsgType::msgType:\
-	obj = reinterpret_cast<char*>(&this->msgType);\
+	obj = (char*)(&this->msgType);\
 	size = sizeof(this->msgType);\
 	break
 
-void MotorCmdData::getDataRef(MsgType msgType, char* & obj, int& size)
+void MotorCmdData::getDataRef(MsgType msgType, char* & obj, int& size) volatile
 {
 	switch (msgType)
 	{

@@ -1,5 +1,7 @@
 #include <pybind11/pybind11.h>
 
+#define NO_VOLATILE
+
 #include "../src/SerialParser.h"
 #include <sstream>
 
@@ -122,7 +124,11 @@ PYBIND11_PLUGIN(_motor_cmd_py)
 		DEF_READWRITE_FIELD(SerialParserPy, motorCmdData)
 
 		.def_property("rxBuffer", 
-			[](SerialParserPy& ser) { return (bytes)std::string(&ser.rx_buffer_[0], ser.rx_buffer_.size());},
+			[](SerialParserPy& ser) { 
+			if (ser.rx_buffer_.empty())
+				return (bytes)"";
+			return (bytes)std::string(&ser.rx_buffer_[0], ser.rx_buffer_.size());
+			},
 			[](SerialParserPy & ser, bytes const& data) {
 					std::string strdata = data;
 					ser.rx_buffer_.assign(strdata.begin(), strdata.end());
