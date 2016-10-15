@@ -1,5 +1,4 @@
 """
-Listen to serial, return most recent numeric values
 Lots of help from here:
 http://stackoverflow.com/questions/1093598/pyserial-how-to-read-last-line-sent-from-serial-device
 """
@@ -7,30 +6,22 @@ from threading import Thread
 import time
 import serial
 import collections
-import struct
 import time
 
-from mot_cmd_py import SerialParser, MsgType
+from motor_cmd_py import SerialParser, MsgType
 
-MAX_SHORT = (1 << 16) - 1
-
-
-class SerialData(object):
+class SerialCom(object):
 
     def __init__(self, init=50):
 
-        self.num_received_lines = 0
-        self.received_lines = collections.deque()
         self.last_t = 0
         self.t_offset = 0
 
         self.bauds = 115200
         self.start_time = time.time()
 
-        self.baud_meas_time = time.time()
-        self.num_symbols = 0
-        self.measured_bauds = 0
 
+        self.thread = None
         ports = [3, 4]
 
         for com_num in ports:
@@ -51,112 +42,109 @@ class SerialData(object):
                 break
             except serial.serialutil.SerialException:
                 #no serial connection
-                import traceback
-                traceback.print_exc()
+                #import traceback
+                #traceback.print_exc()
                 self.ser = None
         else:
-            print("failed connecting to any com ports in {}".format(ports))
+            raise Exception("failed connecting to any com ports in {}".format(ports))
 
         self.parser = SerialParser()
 
-
-        self.thread = Thread(target=self.receiving if self.ser is not None else self.receiving_test,
+        self.thread = Thread(target=self.receiving,
                              args=())
         self.thread.start()
 
 
-    def incr_bauds(self, line):
-
-        ts = time.time()
-
-        self.num_symbols += len(line)
-        self.num_symbols += 1 #endline
-
-        if ts - self.baud_meas_time >= 1:
-            bauds = self.num_symbols / (ts - self.baud_meas_time)
-            if self.measured_bauds == 0:
-                self.measured_bauds = bauds
-            else:
-                self.measured_bauds += bauds
-                self.measured_bauds /= 2
-
-            self.num_symbols = 0
-            self.baud_meas_time = ts
-
-    def receiving_test(self):
-
-        while True:
-            import math
-            time.sleep(.1)
-            t = (time.time() - self.start_time) * 1000
-            t %= MAX_SHORT
-            t = int(t)
-            val = int(MAX_SHORT * (1 + math.cos(t / 500)) / 2)
-
-            line = b"%c%c%c%c" % (t >> 8, t % 256, val >> 8, val % 256)
-            self.received_lines.append(line)
-            self.incr_bauds(line)
-
     def receiving(self):
 
-        while True:
+        num_received = {}
+
+        do_loop = True
+
+        motorData = self.parser.motorCmdData
+
+        self.msgSent = 0
+
+        def send_msg(msgType, doPrint=False):
+            self.msgSent += 1
+            msg = self.parser.getMsg(msgType)
+
+            if doPrint:
+                print('sending', msgType, msg)
+
+            # write hangs if passing longer msg (i.e. the length of a Twist)
+            # why ??? split the msg to avoid that case
+            self.ser.write(msg[:12])
+            self.ser.write(msg[12:])
+
+            #self.ser.write(msg)
+
+        t = time.process_time()
+
+        motorData.Status = 1
+        #motorData.Status = SerialParser.ECHO_MODE
+        #send_msg(MsgType.msgReceived)
+        motorData.odomPeriod = 10
+        send_msg(MsgType.odomPeriod, True)
+
+        #time.sleep(1)
+
+        for i in 0,: #that loop shouldn't be necessary
+            send_msg(MsgType.Status, True)
+
+
+        for i in range(2):
+            send_msg(MsgType.Odom, True)
+
+        N_max = 3
+
+        num_rcv = 0
+
+        AllRcvBytes = b""
+
+
+        while do_loop:
 
             bytes = self.ser.read(self.ser.inWaiting())
+            #print(bytes)
             if bytes:
-                print('setmsg', self.parser.setMsg(bytes), self.parser.rxBuffer)
-                #print('preparse', bytes)
+                AllRcvBytes += bytes
+                num_set = self.parser.recvData(bytes)
+                #print('setmsg', num_set, self.parser.rxBuffer)
                 while True:
                     msgType = self.parser.parseMsg()
-                    #print('postparse')
-                    if msgType == MsgType.Odom:
-                        #print(self.parser.odom.a)
-                        self.parser.Aorder = self.parser.Odom.a
-                        msg_out = self.parser.getMsg(MsgType.Aorder)
-                        self.ser.write(msg_out)
-                        #print("msg_out", msg_out)
 
                     if msgType == MsgType.NONE:
+                        print('                                             msg NONE')
                         break
+                    else:
+                        num_received[msgType] = num_received.get(msgType, 0)+1
+                        if num_rcv >= N_max:
+                            if num_rcv == N_max:
+                                print('**** N_max == {} detected'.format(N_max) )
+                                motorData.Status = 0
+                                send_msg(MsgType.Status, True)
+                                send_msg(MsgType.Status, True)
 
-                    print('recvd', msgType, '' if msgType == MsgType.NONE else getattr(self.parser, str(msgType).split('.')[-1]) )
-                    print()
-    def __iter__(self):
-        return self
+                        print('recvd', msgType, motorData.get_data(msgType))
 
-    def __next__(self):
+                    if msgType == MsgType.msgReceived:
 
-        while True:
+                        print('Elapsed time', time.process_time() - t)
+                        print('msgReceived on Mbed:{}/{}'.format(motorData.msgReceived, self.msgSent))
+                        print('msgReceived on server:')
+                        for mType in num_received:
+                            print('\t', mType, num_received[mType])
 
-            if not self.received_lines:
-                raise StopIteration
 
-            #return a float value or try a few times until we get one
-            raw_line = self.received_lines.popleft()
-            self.num_received_lines += 1
+                    if msgType == MsgType.Odom:
+                        num_rcv += 1
+                        motorData.Twist.pos.x = 2
+                        send_msg(MsgType.Twist)
 
-            try:
-                st = struct.unpack('>HH', raw_line)
-                t = st[0]
-                # convert to [0, 1] interval from [0, MAX_SHORT]
-                val = st[1] / MAX_SHORT
-                #idx = st[2]
+                    if msgType == MsgType.Status and motorData.Status == 0:
+                        return
 
-                if t < self.last_t:
-                    self.t_offset += MAX_SHORT
-
-                self.last_t = t
-
-                t += self.t_offset
-
-                #print(t, val)
-                return t, val
-
-            except struct.error:
-                #not a number
-                try:
-                    print(raw_line.decode("utf-8"))
-                except:
-                    print(raw_line)
 
     def __del__(self):
         if self.ser:
@@ -166,11 +154,5 @@ class SerialData(object):
 
 
 if __name__ == '__main__':
-    s = SerialData()
 
-    while True:
-        for val in s:
-            if s.num_received_lines % 100 == 0:
-                print(int(s.measured_bauds))
-            #print(val)
-
+    s = SerialCom()

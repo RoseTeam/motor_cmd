@@ -3,89 +3,36 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
-
-typedef unsigned char uchar;
-
-union MsgData
-{
-	char c[5];
-	int i = 0;
-	float f;
-};
-
-enum class MsgType : uchar
-{
-	Xorder = 0,
-	Yorder,
-	Aorder,
-	Lspeed,
-	Rspeed,
-	Ttwist,
-	Vtwist,
-	Twist,
-	Odom,
-	SStatus,
-	Text,
-	None // special value used as end marker, must remain in last position
-};
-
-struct TwistMsg
-{
-	float a{ 0 };
-	float b{ 0 };
-};
-
-struct OdomMsg
-{
-	float a{ 0 };
-	float b{ 0 };
-};
-
-struct Message
-{
-	MsgType type;
-	MsgData data;
-};
+#include "motor_cmd_data.h"
 
 template<typename SerialHelper>
-class SerialParser
+struct SerialParser
 {
-
-public:
+	// struct holding data to be sync'ed accross serial connexion.
+	MotorCmdData motorCmdData;
 
 	SerialHelper& serial_helper_;
 
 	SerialParser(SerialHelper& helper) : serial_helper_(helper) {}
 
+	static const uchar ECHO_MODE{ 2 }; // echo mode for testing : resend everything you receive
+
 	static const char header_{ '\'' };
 	static const char delimiter_end_{ '\n' };
 	
-	void getDataRef(MsgType msgType, char* & obj, int& size);
-
-	void setMsg(char const* msg, int size) { 
+	void recvData(char const* msg, int size) { 
 		rx_buffer_.assign(msg, msg + size);
 	}
 
 	MsgType parseMsg();
-	void cleanUpBuffer(int index);
 
-	void sendMsg(MsgType msgType);
-	
+	/* returns true on success */
+	bool sendMsg(MsgType msgType);
+
 	std::vector<char> rx_buffer_;
 
-public:
-	float Xorder;
-	float Yorder;
-	float Aorder{4.8f};
-	float Lspeed;
-	float Rspeed;
-	float Ttwist;
-	float Vtwist;
-	int SStatus;
-
-	OdomMsg Odom;
-
-	TwistMsg Twist;
+private:
+	void cleanUpBuffer(int index);
 };
 
 /**
@@ -101,46 +48,52 @@ MsgType SerialParser<H>::parseMsg()
 	for (int first_idx = 0; first_idx < buf_size - 3; first_idx++, buf_size = rx_buffer_.size())
 	{
 		if (rx_buffer_[first_idx] != header_ ||
-			rx_buffer_[first_idx+1] >= static_cast<uchar>(MsgType::None))
+			rx_buffer_[first_idx+1] >= static_cast<uchar>(MsgType::NONE))
 		{
-			//return true; // first byte doesn't match a message type, ignore data
+			// first byte doesn't match a message type, 
+			// skip that byte
 			continue;
 		}
 
 		MsgType msgType = static_cast<MsgType>(rx_buffer_[first_idx+1]);
 
-		if (msgType == MsgType::Text)
-		{
-			printf(&rx_buffer_[first_idx+2]);
-			rx_buffer_.clear();
-			return MsgType::Text;
-		}
-
 		char* dataPtr;
 		int dataLen;
-		getDataRef(msgType, dataPtr, dataLen);
+		motorCmdData.getDataRef(msgType, dataPtr, dataLen);
+
+		if (dataPtr == nullptr)
+			//|| rx_buffer_[first_idx + dataLen + 2] != delimiter_end_)
+		{
+			// no matching message found, skip that byte.
+			continue;
+		}
 
 		if (buf_size < first_idx + dataLen + 2)
 		{
 			if(first_idx)
 				cleanUpBuffer(first_idx);
 
-			return MsgType::None;
+			// the buffer is shorter than expected message size,
+			// wait until we receive more data
+			return MsgType::NONE;
 		}
 
-		if (dataPtr == nullptr)
-			//|| rx_buffer_[first_idx + dataLen + 2] != delimiter_end_)
-		{
-			continue;
-		}
-
+		// copy message data to the destination variable
 		std::memcpy(dataPtr, &rx_buffer_[first_idx + 2], dataLen);
 
+		// removed bytes that were just read
 		cleanUpBuffer(first_idx + dataLen + 2);
+
+		motorCmdData.msgReceived++;
+
+		if (motorCmdData.Status == ECHO_MODE) {
+			sendMsg(msgType);
+		}
+
 		return msgType;
 	}
 
-	return MsgType::None;
+	return MsgType::NONE;
 }
 
 template<typename H>
@@ -165,44 +118,27 @@ void SerialParser<H>::cleanUpBuffer(int index)
 }
 
 template<typename H>
-void SerialParser<H>::sendMsg(MsgType msgType)
+bool SerialParser<H>::sendMsg(MsgType msgType)
 {
 	char* dataPtr;
 	int dataLen;
-	getDataRef(msgType, dataPtr, dataLen);
+	motorCmdData.getDataRef(msgType, dataPtr, dataLen);
 
+	if (dataPtr == nullptr){
+		// error: msg type doesn't match a variable
+		// check the mapping
+		return false; 
+	}
 	serial_helper_.putc(header_);
 
 	serial_helper_.putc(static_cast<int>(msgType));
-
+	
 	for (int i = 0; i < dataLen; i++)
 	{
 		serial_helper_.putc(dataPtr[i]);
 	}
 
 	serial_helper_.putc(delimiter_end_);
-}
 
-
-#define CASE_SET_DATA_REF(msgType)\
-	case MsgType::msgType:\
-	obj = reinterpret_cast<char*>(&msgType);\
-	size = sizeof(msgType);\
-	break
-
-template<typename H>
-void SerialParser<H>::getDataRef(MsgType msgType, char* & obj, int& size)
-{
-	switch (msgType)
-	{
-	CASE_SET_DATA_REF(Aorder);
-	CASE_SET_DATA_REF(Twist);
-	CASE_SET_DATA_REF(Odom);
-	CASE_SET_DATA_REF(Lspeed);
-	CASE_SET_DATA_REF(Rspeed);
-
-	default:
-		obj = nullptr;
-		size = 0;
-	}
+	return true;
 }

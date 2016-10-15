@@ -30,7 +30,7 @@
     <ProjectGuid>{2EF67077-786C-4A9D-B588-61F724515CA7}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>module_python</RootNamespace>
-    <ProjectName>mot_cmd_py</ProjectName>
+    <ProjectName>motor_cmd_py</ProjectName>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -80,7 +80,7 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(IncludePath)</IncludePath>
     <TargetExt>.pyd</TargetExt>
-    <TargetName>$(ProjectName)</TargetName>
+    <TargetName>_$(ProjectName)</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -94,7 +94,7 @@
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.pyd</TargetExt>
     <IncludePath>$(IncludePath)</IncludePath>
-    <TargetName>$(ProjectName)</TargetName>
+    <TargetName>_$(ProjectName)</TargetName>
     <OutDir>$(SolutionDir)$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
@@ -121,7 +121,7 @@
       <OutputFile>$(SolutionDir)$(Configuration)\$(ProjectName)\$(TargetFileName)</OutputFile>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\$(TargetFileName)" "$(ProjectDir)..\"</Command>
+      <Command>copy "$(OutDir)\$(TargetFileName)" "$(ProjectDir)\"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy to python module</Message>
@@ -170,7 +170,7 @@
       <OutputFile>$(SolutionDir)$(Configuration)\$(ProjectName)\$(TargetFileName)</OutputFile>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)\$(TargetFileName)" "$(ProjectDir)..\"</Command>
+      <Command>copy "$(OutDir)\$(TargetFileName)" "$(ProjectDir)\"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy to python module</Message>
