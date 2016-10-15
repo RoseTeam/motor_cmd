@@ -1,11 +1,26 @@
 #include "SerialParser.h"
 #include <vector>
+#include <iomanip>
+#include <iostream>
+
+void _putc(int c)
+{
+	std::ios::fmtflags f(std::cout.flags());
+
+	char cc = static_cast<char>(c);
+	if (cc == '\'' || cc == '\n')
+		std::cout << cc;
+	else
+		std::cout << "\\x" << std::setw(2) << std::setfill('0') << std::hex << c;
+
+	std::cout.flags(f);
+}
 
 struct SerialHelper
 {
 	void putc(int c)
 	{
-		printf("%c", static_cast<char>(c));
+		_putc(c);
 	}
 };
 
@@ -18,7 +33,6 @@ struct SerialReceiver : public SerialParser<SerialHelper>
 	void receivec(int c)
 	{
 		//printf("char:{%c}",static_cast<char>(c));
-		rxMsg_.push_back(c);
 		if (static_cast<char>(c) == delimiter_end_)
 		{
 			//auto buf_size = rx_buffer_.size();
@@ -34,26 +48,25 @@ struct SerialReceiver : public SerialParser<SerialHelper>
 				auto msgType = parseMsg();
 				if (msgType == MsgType::NONE)
 				{
-					std::string msg(&rx_buffer_[0], rx_buffer_.size());
+					std::string msg((char*)&rx_buffer_[0], rx_buffer_.size());
 					printf("can't parse: %s\n", msg.c_str());
 					break;
 				}
 
-				printf("recvd: %d\n", motorCmdData.odomPeriod);
+				//printf("recvd: %d\n", motorCmdData.odomPeriod);
 
 			} while (!rx_buffer_.empty());
 
+		}
+		else
+		{
+			rxMsg_.push_back(c);
 		}
 	}
 
 	void putc(int c)
 	{
-		char cc = static_cast<char>(c);
-		if(cc == '\'' || cc== '\n')
-			printf("%c", cc);
-		else
-			printf("\\x%x", cc);
-
+		_putc(c);
 		receivec(c);
 	}
 };
@@ -64,10 +77,33 @@ struct SerialHelperSender : public SerialParser<SerialReceiver>
 	SerialHelperSender() : SerialParser<SerialReceiver>(rcv) {}
 };
 
+
+SerialHelperSender ser;
+
+void test_send()
+{
+	ser.motorCmdData.odomPeriod = 1000;
+	ser.sendMsg(MsgType::odomPeriod);
+	ser.motorCmdData.Status = SerialHelperSender::ECHO_MODE;
+	ser.sendMsg(MsgType::Status);
+
+	ser.sendMsg(MsgType::Odom);
+	ser.sendMsg(MsgType::Odom);
+}
+
 int main()
 {
-	SerialHelperSender ser;
-	
+	test_send();
+	return 0;
+}
+
+int main2()
+{
+	char const* odomPeriod = "'\x02\xe8\x03\x00\x00\n";
+	char const* Status = "'\x05\x02\n";
+	char const* odom = "'\x01\x00\x00\x00\x00\x00\x00\x00\x00\n";
+
+
 	char const* msg = "'\x03\n'\x04\n'\x08\x00\x00\xce""B\x00\x00\x00\x00\n'\x02\x9a\x99\x99""@\n";
 	ser.recvData(msg, 24);
 	ser.parseMsg();
@@ -93,4 +129,5 @@ int main()
 		printf("\n\n");
 		ser.serial_helper_.putc('\'');
 	}
+	return 0;
 }
