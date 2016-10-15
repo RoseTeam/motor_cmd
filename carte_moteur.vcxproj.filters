@@ -24,6 +24,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\main_mbed.cpp" />
   </ItemGroup>
 </Project>
