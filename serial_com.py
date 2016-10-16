@@ -49,11 +49,31 @@ class SerialCom(object):
             raise Exception("failed connecting to any com ports in {}".format(ports))
 
         self.parser = SerialParser()
+        self.msgSent = 0
 
         self.thread = Thread(target=self.receiving,
                              args=())
         self.thread.start()
 
+        time.sleep(.2)
+
+        motorData = self.parser.motorCmdData
+
+
+        motorData.odomPeriod = 1000
+        self.send_msg(MsgType.odomPeriod, True)
+
+        motorData.Status = 1
+        # motorData.Status = SerialParser.ECHO_MODE
+
+        for _ in range(1):  # that loop shouldn't be necessary
+            time.sleep(1)
+            self.send_msg(MsgType.Status, True)
+
+        for _ in range(0):
+            self.send_msg(MsgType.Twist, True)
+
+        print('Exit send')
 
     def receiving(self):
 
@@ -63,41 +83,9 @@ class SerialCom(object):
 
         motorData = self.parser.motorCmdData
 
-        self.msgSent = 0
-
-        def send_msg(msgType, doPrint=False):
-            self.msgSent += 1
-            msg = self.parser.getMsg(msgType)
-
-            if doPrint:
-                print('sending', msgType, msg)
-
-            # write hangs if passing longer msg (i.e. the length of a Twist)
-            # why ??? split the msg to avoid that case
-            self.ser.write(msg[:12])
-            self.ser.write(msg[12:])
-
-            #self.ser.write(msg)
-
         t = time.process_time()
 
-        motorData.Status = 1
-        #motorData.Status = SerialParser.ECHO_MODE
-        #send_msg(MsgType.msgReceived)
-        motorData.odomPeriod = 10
-        send_msg(MsgType.odomPeriod, True)
-
-        #time.sleep(1)
-
-        for i in 0,: #that loop shouldn't be necessary
-            send_msg(MsgType.Status, True)
-
-
-        for i in range(2):
-            send_msg(MsgType.Odom, True)
-
         N_max = 3
-
         num_rcv = 0
 
         AllRcvBytes = b""
@@ -106,16 +94,20 @@ class SerialCom(object):
         while do_loop:
 
             bytes = self.ser.read(self.ser.inWaiting())
-            #print(bytes)
             if bytes:
                 AllRcvBytes += bytes
+                print('recBytes', self.parser.rxBuffer, '+', bytes)
                 num_set = self.parser.recvData(bytes)
-                #print('setmsg', num_set, self.parser.rxBuffer)
-                while True:
+
+                while self.parser.rxBuffer:
+
                     msgType = self.parser.parseMsg()
 
                     if msgType == MsgType.NONE:
-                        print('                                             msg NONE')
+                        if bytes == self.parser.rxBuffer:
+                            print('       msg NONE', bytes)
+                        else:
+                            print('       msg NONE', bytes, self.parser.rxBuffer)
                         break
                     else:
                         num_received[msgType] = num_received.get(msgType, 0)+1
@@ -123,10 +115,10 @@ class SerialCom(object):
                             if num_rcv == N_max:
                                 print('**** N_max == {} detected'.format(N_max) )
                                 motorData.Status = 0
-                                send_msg(MsgType.Status, True)
-                                send_msg(MsgType.Status, True)
+                                self.send_msg(MsgType.Status, True)
+                                self.send_msg(MsgType.Status, True)
 
-                        print('recvd', msgType, motorData.get_data(msgType))
+                        print('   rcvd', msgType, motorData.get_data(msgType))
 
                     if msgType == MsgType.msgReceived:
 
@@ -140,10 +132,26 @@ class SerialCom(object):
                     if msgType == MsgType.Odom:
                         num_rcv += 1
                         motorData.Twist.pos.x = 2
-                        send_msg(MsgType.Twist)
+                        self.send_msg(MsgType.Twist)
 
                     if msgType == MsgType.Status and motorData.Status == 0:
-                        return
+                        pass#return
+
+
+
+    def send_msg(self, msgType, doPrint=False):
+        self.msgSent += 1
+        msg = self.parser.getMsg(msgType)
+
+        if doPrint:
+            print('sending', msgType, self.parser.motorCmdData.get_data(msgType), msg)
+
+        # write hangs if passing longer msg (i.e. the length of a Twist)
+        # why ??? split the msg to avoid that case
+        self.ser.write(msg[:12])
+        self.ser.write(msg[12:])
+
+        # self.ser.write(msg)
 
 
     def __del__(self):
