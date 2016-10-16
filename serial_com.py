@@ -51,8 +51,9 @@ class SerialCom(object):
         self.parser = SerialParser()
         self.msgSent = 0
 
+        N_max = 200
         self.thread = Thread(target=self.receiving,
-                             args=())
+                             args=(N_max,))
         self.thread.start()
 
         motorData = self.parser.motorCmdData
@@ -61,7 +62,11 @@ class SerialCom(object):
         #motorData.Status = SerialParser.ECHO_MODE
         #self.send_msg(MsgType.Status, True)
 
-        motorData.odomPeriod = 11
+        twist_period = 11
+        odom_period = twist_period#110
+
+
+        motorData.odomPeriod = odom_period
         self.send_msg(MsgType.odomPeriod, True)
 
         #motorData.Status = 0
@@ -72,13 +77,14 @@ class SerialCom(object):
             self.send_msg(MsgType.Status, True)
 
 
-        for _ in range(0):
-            self.send_msg(MsgType.Twist, True)
+        for _ in range(N_max):
+            time.sleep(twist_period/1000.)
+            self.send_msg(MsgType.Odom)
 
 
         print('Exit send')
 
-    def receiving(self):
+    def receiving(self, N_max = 10):
 
         num_received = {}
 
@@ -88,10 +94,7 @@ class SerialCom(object):
 
         t = time.process_time()
 
-        N_max = 1021
-
         doPrint = N_max <= 20
-
 
         num_rcv = 0
 
@@ -132,10 +135,10 @@ class SerialCom(object):
                         if msgType == MsgType.msgReceived:
                             print()
                             elapsed_time = time.process_time() - t
-                            print('Elapsed time', elapsed_time)
-                            print('        freq', N_max / elapsed_time)
-                            print('msgReceived on Mbed:{}/{}'.format(motorData.msgReceived, self.msgSent))
-                            print('msgReceived on server:')
+                            print('       Elapsed time:', elapsed_time)
+                            print('               freq: %.2f Hz'%(N_max / elapsed_time))
+                            print('msgReceived on Mbed: {}/{} <<<<<'.format(motorData.msgReceived, self.msgSent))
+                            print('msgReceived on PC  :')
                             for mType in num_received:
                                 print('\t', mType, num_received[mType])
 
