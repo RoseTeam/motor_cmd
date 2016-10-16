@@ -126,11 +126,11 @@ PYBIND11_PLUGIN(_motor_cmd_py)
 		.def_property("rxBuffer", 
 			[](SerialParserPy& ser) { 
 			if (ser.rx_buffer_.empty())
-				return (bytes)"";
-			return (bytes)std::string(&ser.rx_buffer_[0], ser.rx_buffer_.size());
+				return bytes("");
+			return bytes(&ser.rx_buffer_[0], ser.rx_buffer_.size());
 			},
 			[](SerialParserPy & ser, bytes const& data) {
-					std::string strdata = data;
+					std::string strdata(data);
 					ser.rx_buffer_.assign(strdata.begin(), strdata.end());
 			})
 
@@ -138,7 +138,7 @@ PYBIND11_PLUGIN(_motor_cmd_py)
 		.def("parseMsg", &SerialParserPy::parseMsg)
 		.def("recvData", 
 			[](SerialParserPy & ser, bytes const& data) {
-				std::string strdata = data;
+				std::string strdata(data);
 				ser.recvData(strdata.c_str(), strdata.size()); 
 				return strdata.size(); 
 			})

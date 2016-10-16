@@ -27,8 +27,8 @@ struct SerialParser
 	static const char header_{ '/' };
 	static const char delimiter_end_{ '\n' };
 	
-	void recvData(char const* msg, int size) { 
-		rx_buffer_.assign(msg, msg + size);
+	inline void recvData(char const* msg, int size) { 
+		rx_buffer_.insert(rx_buffer_.end(), msg, msg + size);
 	}
 
 	MsgType parseMsg();
@@ -50,7 +50,7 @@ MsgType SerialParser<H>::parseMsg()
 {
 	int buf_size = rx_buffer_.size();
 
-	for (int first_idx = 0; first_idx <= buf_size - 3; first_idx++, buf_size = rx_buffer_.size())
+	for (int first_idx = 0; first_idx <= buf_size - 3; first_idx++)
 	{
 		if (rx_buffer_[first_idx] != header_ ||
 			rx_buffer_[first_idx+1] >= static_cast<uchar>(MsgType::NONE))
@@ -73,7 +73,7 @@ MsgType SerialParser<H>::parseMsg()
 			continue;
 		}
 
-		if (buf_size < first_idx + dataLen + 2)
+		if (buf_size - first_idx < dataLen + 2)
 		{
 			if(first_idx)
 				cleanUpBuffer(first_idx);
@@ -87,7 +87,7 @@ MsgType SerialParser<H>::parseMsg()
 		std::memcpy(dataPtr, &rx_buffer_[first_idx + 2], dataLen);
 
 		// removed bytes that were just read
-		cleanUpBuffer(first_idx + dataLen + 2);
+		cleanUpBuffer(first_idx + 2 + dataLen);
 
 		motorCmdData.msgReceived++;
 
@@ -140,7 +140,7 @@ bool SerialParser<H>::sendMsg(MsgType msgType)
 	
 	for (int i = 0; i < dataLen; i++)
 	{
-		serial_helper_.putc((uchar)dataPtr[i]);
+		serial_helper_.putc(dataPtr[i]);
 	}
 
 	serial_helper_.putc(delimiter_end_);
