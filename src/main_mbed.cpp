@@ -71,7 +71,7 @@ int main()
 	while(true)
 	{
 		while (cmdData.Status == 0) {
-			wait_ms(10);
+			//wait_ms(10);
 		}
 		//printf("cmdData.Status %d\n", cmdData.Status);
 
@@ -80,7 +80,7 @@ int main()
 			odomTicker.attach_us(&serialParser, &ModSerialParser::sendOdom, cmdData.odomPeriod*1000);
 		}
 		while (cmdData.Status != 0){
-			wait_ms(50);
+			//wait_ms(50);
 			// do servoing here
 		}
 		odomTicker.detach();

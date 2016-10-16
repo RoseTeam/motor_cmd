@@ -61,7 +61,7 @@ class SerialCom(object):
         #motorData.Status = SerialParser.ECHO_MODE
         #self.send_msg(MsgType.Status, True)
 
-        motorData.odomPeriod = 1000
+        motorData.odomPeriod = 11
         self.send_msg(MsgType.odomPeriod, True)
 
         #motorData.Status = 0
@@ -88,17 +88,18 @@ class SerialCom(object):
 
         t = time.process_time()
 
-        N_max = 3
+        N_max = 1021
+
+        doPrint = N_max <= 20
+
+
         num_rcv = 0
-
-        AllRcvBytes = b""
-
 
         while do_loop:
 
             bytes = self.ser.read(self.ser.inWaiting())
             if bytes:
-                AllRcvBytes += bytes
+
                 #print('recBytes', self.parser.rxBuffer, '+', bytes)
                 num_set = self.parser.recvData(bytes)
 
@@ -107,24 +108,32 @@ class SerialCom(object):
                     msgType = self.parser.parseMsg()
 
                     if msgType == MsgType.NONE:
-                        if bytes == self.parser.rxBuffer:
-                            print('       msg NONE', bytes)
-                        else:
-                            print('       msg NONE', bytes, self.parser.rxBuffer)
+
+                        if doPrint:
+                            if bytes == self.parser.rxBuffer:
+                                print('       msg NONE', bytes)
+                            else:
+                                print('       msg NONE', bytes, self.parser.rxBuffer)
                         break
                     else:
 
                         num_received[msgType] = num_received.get(msgType, 0)+1
-                        print('   prsd', msgType, motorData.get_data(msgType))
 
                         if msgType == MsgType.Odom:
                             num_rcv += 1
                             motorData.Twist.pos.x = 2
                             # self.send_msg(MsgType.Twist)
 
+                        if msgType != MsgType.Odom or doPrint:
+                            print('   prsd', msgType, motorData.get_data(msgType))
+
+
+
                         if msgType == MsgType.msgReceived:
                             print()
-                            print('Elapsed time', time.process_time() - t)
+                            elapsed_time = time.process_time() - t
+                            print('Elapsed time', elapsed_time)
+                            print('        freq', N_max / elapsed_time)
                             print('msgReceived on Mbed:{}/{}'.format(motorData.msgReceived, self.msgSent))
                             print('msgReceived on server:')
                             for mType in num_received:
@@ -146,7 +155,7 @@ class SerialCom(object):
 
 
 
-    def send_msg(self, msgType, doPrint=False, sleep=.001):
+    def send_msg(self, msgType, doPrint=False, sleep=.000):
 
         if sleep:
             time.sleep(sleep)
