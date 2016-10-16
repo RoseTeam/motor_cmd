@@ -1,6 +1,10 @@
+
+#pragma warning(disable: 4197) // volatile related
+
 #include <pybind11/pybind11.h>
 
 #define NO_VOLATILE
+
 
 #include "../src/SerialParser.h"
 #include <sstream>
@@ -118,6 +122,7 @@ PYBIND11_PLUGIN(_motor_cmd_py)
 	class_<SerialParserPy, SerialParser<SerialParserHelperPy>>(m, "SerialParser")
 		.def(init<>())
 
+		.def_readonly_static("BAUD_RATE", &SerialParserPy::BAUD_RATE)
 		.def_readonly_static("ECHO_MODE", &SerialParserPy::ECHO_MODE)
 		.def_readonly_static("delimiter_end_", &SerialParserPy::delimiter_end_)
 

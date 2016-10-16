@@ -17,7 +17,7 @@ class SerialCom(object):
         self.last_t = 0
         self.t_offset = 0
 
-        self.bauds = 115200
+        self.bauds = SerialParser.BAUD_RATE
         self.start_time = time.time()
 
 
@@ -55,23 +55,26 @@ class SerialCom(object):
                              args=())
         self.thread.start()
 
-        time.sleep(.2)
-
         motorData = self.parser.motorCmdData
 
+
+        #motorData.Status = SerialParser.ECHO_MODE
+        #self.send_msg(MsgType.Status, True)
 
         motorData.odomPeriod = 1000
         self.send_msg(MsgType.odomPeriod, True)
 
-        motorData.Status = 1
-        # motorData.Status = SerialParser.ECHO_MODE
+        #motorData.Status = 0
+        #self.send_msg(MsgType.Status, True)
 
         for _ in range(1):  # that loop shouldn't be necessary
-            time.sleep(1)
+            motorData.Status = 1
             self.send_msg(MsgType.Status, True)
+
 
         for _ in range(0):
             self.send_msg(MsgType.Twist, True)
+
 
         print('Exit send')
 
@@ -96,7 +99,7 @@ class SerialCom(object):
             bytes = self.ser.read(self.ser.inWaiting())
             if bytes:
                 AllRcvBytes += bytes
-                print('recBytes', self.parser.rxBuffer, '+', bytes)
+                #print('recBytes', self.parser.rxBuffer, '+', bytes)
                 num_set = self.parser.recvData(bytes)
 
                 while self.parser.rxBuffer:
@@ -110,36 +113,44 @@ class SerialCom(object):
                             print('       msg NONE', bytes, self.parser.rxBuffer)
                         break
                     else:
+
                         num_received[msgType] = num_received.get(msgType, 0)+1
+                        print('   prsd', msgType, motorData.get_data(msgType))
+
+                        if msgType == MsgType.Odom:
+                            num_rcv += 1
+                            motorData.Twist.pos.x = 2
+                            # self.send_msg(MsgType.Twist)
+
+                        if msgType == MsgType.msgReceived:
+                            print()
+                            print('Elapsed time', time.process_time() - t)
+                            print('msgReceived on Mbed:{}/{}'.format(motorData.msgReceived, self.msgSent))
+                            print('msgReceived on server:')
+                            for mType in num_received:
+                                print('\t', mType, num_received[mType])
+
+                        if msgType == MsgType.Status and motorData.Status == 0:
+                            num_rcv = 0
+                            #print (self.parser.rxBuffer, AllRcvBytes, bytes)
+                            pass  # return
+
                         if num_rcv >= N_max:
                             if num_rcv == N_max:
                                 print('**** N_max == {} detected'.format(N_max) )
                                 motorData.Status = 0
                                 self.send_msg(MsgType.Status, True)
-                                self.send_msg(MsgType.Status, True)
-
-                        print('   rcvd', msgType, motorData.get_data(msgType))
-
-                    if msgType == MsgType.msgReceived:
-
-                        print('Elapsed time', time.process_time() - t)
-                        print('msgReceived on Mbed:{}/{}'.format(motorData.msgReceived, self.msgSent))
-                        print('msgReceived on server:')
-                        for mType in num_received:
-                            print('\t', mType, num_received[mType])
-
-
-                    if msgType == MsgType.Odom:
-                        num_rcv += 1
-                        motorData.Twist.pos.x = 2
-                        self.send_msg(MsgType.Twist)
-
-                    if msgType == MsgType.Status and motorData.Status == 0:
-                        pass#return
+                                #   self.send_msg(MsgType.Status, True)
 
 
 
-    def send_msg(self, msgType, doPrint=False):
+
+
+    def send_msg(self, msgType, doPrint=False, sleep=.001):
+
+        if sleep:
+            time.sleep(sleep)
+
         self.msgSent += 1
         msg = self.parser.getMsg(msgType)
 

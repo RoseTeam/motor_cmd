@@ -41,7 +41,7 @@ when adding a new type, three places needs to be touched:
 */
 enum class MsgType : uchar
 {
-	Twist=0,
+	Twist=1,
 	Odom,
 	odomPeriod,
 	pidPropulsion,
@@ -72,7 +72,7 @@ struct MotorCmdData
 	PIDCoeffs pidPropulsion;
 	PIDCoeffs pidDirection;
 
-	uchar Status{ 0 };
+	volatile int Status{ 0 };
 
 	int msgReceived{ 0 };
 	int msgCorrupted{ 0 };

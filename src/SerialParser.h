@@ -14,6 +14,8 @@
 template<typename SerialHelper>
 struct SerialParser
 {
+	static const int BAUD_RATE{ 57600 };
+
 	// struct holding data to be sync'ed accross serial connexion.
 	VOLATILE MotorCmdData motorCmdData;
 	std::vector<char> rx_buffer_;
@@ -57,6 +59,8 @@ MsgType SerialParser<H>::parseMsg()
 		{
 			// first byte doesn't match a message type, 
 			// skip that byte
+			//printf("skipping\n");
+
 			continue;
 		}
 
@@ -69,6 +73,8 @@ MsgType SerialParser<H>::parseMsg()
 		if (dataPtr == nullptr)
 			//|| rx_buffer_[first_idx + dataLen + 2] != delimiter_end_)
 		{
+			//printf("no match\n");
+
 			// no matching message found, skip that byte.
 			continue;
 		}
@@ -77,6 +83,7 @@ MsgType SerialParser<H>::parseMsg()
 		{
 			if(first_idx)
 				cleanUpBuffer(first_idx);
+			//printf("waiting for more\n");
 
 			// the buffer is shorter than expected message size,
 			// wait until we receive more data
@@ -91,9 +98,7 @@ MsgType SerialParser<H>::parseMsg()
 
 		motorCmdData.msgReceived++;
 
-		if (motorCmdData.Status == ECHO_MODE) {
-			sendMsg(msgType);
-		}
+		//printf("found\n");
 
 		return msgType;
 	}
