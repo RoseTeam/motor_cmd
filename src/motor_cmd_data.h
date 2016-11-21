@@ -62,6 +62,12 @@ enum class StatusCode : uchar
 	ECHO = 2
 };
 */
+
+#define MSG_TYPE_VAL_PRINT(T)\
+case MsgType::T:\
+return s << T
+
+
 struct MotorCmdData
 {
 	TwistMsg Twist;
@@ -79,4 +85,50 @@ struct MotorCmdData
 	int bytesReceived{ 0 };
 
 	void getDataRef(MsgType msgType, char* & obj, int& size) volatile;
+
+	template<typename T>
+	T& printVal(T& s, MsgType const& type) volatile
+	{
+		switch (type)
+		{
+			/*MSG_TYPE_VAL_PRINT(Twist);
+			MSG_TYPE_VAL_PRINT(Odom);
+			MSG_TYPE_VAL_PRINT(pidPropulsion);
+			MSG_TYPE_VAL_PRINT(pidDirection);
+			*/
+			MSG_TYPE_VAL_PRINT(odomPeriod);
+			MSG_TYPE_VAL_PRINT(Status);
+			MSG_TYPE_VAL_PRINT(msgReceived);
+			MSG_TYPE_VAL_PRINT(msgCorrupted);
+			MSG_TYPE_VAL_PRINT(bytesReceived);
+		default:
+			return s << "unsupported print MsgType:" << static_cast<int>(type);
+		}
+	}
+
+
 };
+
+
+#define MSG_TYPE_ENUM_PRINT(T)\
+case MsgType::T:\
+return s << #T
+
+template<typename T>
+T& operator<<(T& s, MsgType const& type)
+{
+	switch (type)
+	{
+		MSG_TYPE_ENUM_PRINT(Twist);
+		MSG_TYPE_ENUM_PRINT(Odom);
+		MSG_TYPE_ENUM_PRINT(pidPropulsion);
+		MSG_TYPE_ENUM_PRINT(pidDirection);
+		MSG_TYPE_ENUM_PRINT(odomPeriod);
+		MSG_TYPE_ENUM_PRINT(Status);
+		MSG_TYPE_ENUM_PRINT(msgReceived);
+		MSG_TYPE_ENUM_PRINT(msgCorrupted);
+		MSG_TYPE_ENUM_PRINT(bytesReceived);
+	default:
+		return s << "unsupported << MsgType:" << static_cast<int>(type);
+	}
+}

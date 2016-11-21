@@ -2,7 +2,7 @@
 #include "MODSERIAL.h"
 
 void MODSERIAL::setBase(void ) {
-switch( _serial.index ) {
+switch( _serial.serial.index ) { //https://developer.mbed.org/questions/61935/compile-error/
         case 0: _base = USART1; _IRQ = USART1_IRQn; break;
         case 1: _base = USART2; _IRQ = USART2_IRQn; break;
         case 2: _base = USART6; _IRQ = USART6_IRQn; break;

@@ -24,7 +24,11 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\RS-232\rs232.c" />
     <ClCompile Include="main_test.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\RS-232\rs232.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{910C888E-6CBA-4AB4-AE9C-4DD78D241586}</ProjectGuid>
