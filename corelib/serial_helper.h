@@ -33,7 +33,7 @@ struct CSerialParser : public SerialParser<CSerialHelper>
 	void receivec(int c);
 	void putc(int c)
 	{
-		print_hex(c);
+		//print_hex(c);
 		serial_helper_.putc(c);
 		//receivec(c);
 	}

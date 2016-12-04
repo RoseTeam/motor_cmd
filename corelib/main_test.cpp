@@ -3,6 +3,7 @@
 #include <thread>
 #include <exception>
 
+#include <chrono>
 #include <stdlib.h>
 #include <stdio.h>
 #include "serial_helper.h"
@@ -13,6 +14,8 @@
 #else
 #include <unistd.h>
 #endif
+
+using namespace std::chrono;
 
 struct SerialHelperSender : public SerialParser<CSerialParser>
 {
@@ -31,19 +34,21 @@ struct TestSetup
 {
 	SerialHelperSender ser;
 
-	void sendMsg(MsgType type)
+	void sendMsg(MsgType type, bool print=true)
 	{ 
-		std::cout << "Sending " << type << " ";
-		ser.motorCmdData.printVal(std::cout, type) << std::endl;
+		if(print){
+			std::cout << "Sending " << type << " ";
+			ser.motorCmdData.printVal(std::cout, type) << std::endl;
+		}
 		ser.sendMsg(type); 
 	}
 
 	~TestSetup() {
-		if(!std::cin.peek())
-			std::cout << "press Enter to stop" << std::endl;
-		std::cin.get();
 
-		ser.serial_helper_.print_stats();		
+		std::cout << std::endl << "press Enter to continue" << std::endl;
+		std::cin.get();
+		ser.serial_helper_.print_stats();
+
 	}
 };
 
@@ -63,30 +68,40 @@ void test_send()
 	//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
-void test_chrono(int N = 10)
+void sendTwistRecOdom(int N = 10, int odomPeriodMs = 1, int twistPeriodMs = 100)
 {
 	TestSetup setup;
-	setup.ser.serial_helper_.print_rcvd_ = true;
+	setup.ser.serial_helper_.print_rcvd_ = N <= 10;
 
-	setup.ser.motorCmdData.odomPeriod = 600;
+	setup.ser.motorCmdData.odomPeriod = odomPeriodMs;
 	setup.sendMsg(MsgType::odomPeriod);
 
 	setup.ser.motorCmdData.Status = 1;
 	setup.sendMsg(MsgType::Status);
 	
+	auto t1 = high_resolution_clock::now();
+
 	while (setup.ser.serial_helper_.stats[static_cast<int>(MsgType::Odom)] < N )//&& !std::cin.peek())
 	{
-		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-		std::this_thread::yield();
+		if (twistPeriodMs >= 0){
+			setup.sendMsg(MsgType::Twist, false);
+		}
+
+		if(twistPeriodMs > 0)
+			std::this_thread::sleep_for(std::chrono::milliseconds(twistPeriodMs));
+		else
+			std::this_thread::yield();
 	}
-	std::cout << "DONE: received" << N << "odom msgs" << std::endl;
+
+	auto t2 = high_resolution_clock::now();
+
+	auto duration = duration_cast<microseconds>(t2 - t1).count();
+
+	std::cout << std::endl << "			DONE: received " << N << " odom msgs";
+	std::cout << " in " << duration / 1.e6 << "s at " << N * 1e6 / duration << " msgs per s" << std::endl;
+
 	setup.ser.motorCmdData.Status = 0;
 	setup.sendMsg(MsgType::Status);
-}
-
-void test_echo()
-{
-
 }
 
 int main()
@@ -94,17 +109,14 @@ int main()
 	int ret_code = 0;
 	try{
 		//test_send();
-		test_chrono();
+		sendTwistRecOdom(2000,5,5);
 	}
 	catch (std::exception const& exc)
 	{
 		std::cerr << "ERROR: " << exc.what();
 		ret_code = 111;
 	}
-
-	std::cout << std::endl << "press Enter to exit" << std::endl;
 	std::cin.get();
-
 	return ret_code;
 }
 

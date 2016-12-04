@@ -99,7 +99,7 @@ int main()
 		while (serialParser.motorCmdData.Status == 0) {
 			//serialParser.sendMsg(MsgType::Status);
 			//led2 = !led2;
-			wait_ms(2000);
+			wait_ms(1000);
 		}
 		
 		printf("cmdData.Status %d\n", cmdData.Status);
@@ -117,7 +117,7 @@ int main()
 		}
 		odomTicker.detach();
 
-		wait_ms(5000);
+		wait_ms(2000);
 		//serialParser.sendMsg(MsgType::bytesReceived);
 		serialParser.sendMsg(MsgType::msgCorrupted);
 		serialParser.sendMsg(MsgType::msgReceived);

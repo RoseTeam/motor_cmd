@@ -46,8 +46,6 @@ CSerialHelper::~CSerialHelper() {
 
 
 
-
-
 CSerialParser::CSerialParser() :
 	SerialParser<CSerialHelper>(ser_helper)
 {
@@ -61,7 +59,7 @@ CSerialParser::CSerialParser() :
 
 			if (n > 0)
 			{
-				printf("received %i bytes: %s\n", n, (char *)&buf_[0]);
+				//printf("received %i bytes: %s\n", n, (char *)&buf_[0]);
 
 				for (int i = 0; i < n; i++)
 				{
@@ -88,7 +86,7 @@ void CSerialParser::receivec(int c)
 			if (msgType == MsgType::NONE)
 			{
 				std::string msg((char*)&rx_buffer_[0], rx_buffer_.size());
-				printf("can't parse; keeping %u bytes: %s\n", rx_buffer_.size(), msg.c_str());
+				//printf("can't parse; keeping %u bytes: %s\n", rx_buffer_.size(), msg.c_str());
 				break;
 			}
 			else {
